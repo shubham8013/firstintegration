@@ -1,0 +1,99 @@
+public class CloneAndUpdateOppUsingRestAPI 
+{
+     class oauth
+    {
+        public string access_token{get;set;}
+        public string instance_url{get;set;}
+        public string id{get;set;}
+        public string token_type{get;set;}
+        public string issued_at{get;set;}
+        public string signature{get;set;}
+        
+    }
+    class OppWrap{
+        public string oppName;
+        public String oppType;
+        public String oppStageName;
+        public Date oppCloseDate;
+        public Decimal oppAmount;
+        public oppWrap(String oppName,String oppType,String oppStageName,Date oppCloseDate,Decimal oppAmount)
+        {
+            this.oppName =oppName;
+            this.oppType =oppType;
+            this.oppStageName =oppStageName;
+            this.oppCloseDate =oppCloseDate;
+            this.oppAmount =oppAmount;
+        }
+    }
+    @future(callout=true)
+    public static void makePostCallout(Set<Id> oppInIdSet) {
+        //list<Opportunity> inOppList= (list<Opportunity>)JSON.deserialize(oppInList,list<Opportunity>.class);
+        List<Opportunity> oppList=new List<Opportunity>();
+        Http http1 = new Http();
+        HttpRequest request1 = new HttpRequest();
+        request1.setEndpoint('https://aot9-dev-ed.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG9wt4IL4O5wvK2I9YiSX.kX2pO9okCU7PY9.HBLVIL5MkKQL1OP2RRmmA8W3Qu52Hcp20JJKntcXmo81A_&client_secret=C921860CA29F87D0CB247FB24B027D0E8696E9F6CDA875984AEECA5C81E34852&username=shubhamji@gmail.com&password=Sangita@Rakesh1978IVQ4DOJ9OBytfnKCXok83VWP8');
+        request1.setMethod('POST');
+        HttpResponse r=new HttpResponse();
+        r=http1.send(request1);
+        oauth obj=(oauth)JSON.deserialize(r.getBody(), Oauth.class);
+        if(obj.access_token!=null)
+        {
+            
+            for(Opportunity op: [select id,name,amount,type,stageName,closeDate,AccountId,ExternalId__c from Opportunity where id in: oppInIdSet]){
+                oppWrap oppObj=new oppWrap(op.Name,op.Type,op.StageName,op.CloseDate,op.Amount);
+                Http http = new Http();
+                HttpRequest request = new HttpRequest();
+                request.setEndpoint('https://aot9-dev-ed.my.salesforce.com/services/apexrest/cloneAndUpdateOpp');
+                request.setMethod('POST');
+                request.setHeader('Content-Type', 'application/json;charset=UTF-8');
+                request.setHeader('Authorization', 'Bearer '+obj.access_token);
+                System.debug('JSON'+JSON.serialize(oppObj));
+                request.setBody(JSON.serialize(oppObj));
+                HttpResponse response = http.send(request);
+                System.debug('response'+response.getBody());
+                string sr=response.getBody();
+                id swe=(id)JSON.deserialize(sr, id.class);
+                Opportunity oppo=new Opportunity();
+                oppo.id=op.id;
+                oppo.ExternalID__c=swe;
+                oppList.add(oppo);
+              }
+        }
+        if(oppList.size()>0){
+            update oppList;
+        }
+        
+        
+    }
+   @future(callout=true)
+    public static void makePatchCallout(Set<Id> oppExIdSet) {
+        
+        //list<Opportunity> upOppList= (list<Opportunity>)JSON.deserialize(oppUpList,list<Opportunity>.class);
+        Http http1 = new Http();
+        HttpRequest request1 = new HttpRequest();
+        request1.setEndpoint('https://aot9-dev-ed.my.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG9wt4IL4O5wvK2I9YiSX.kX2pO9okCU7PY9.HBLVIL5MkKQL1OP2RRmmA8W3Qu52Hcp20JJKntcXmo81A_&client_secret=C921860CA29F87D0CB247FB24B027D0E8696E9F6CDA875984AEECA5C81E34852&username=shubhamji@gmail.com&password=Sangita@Rakesh1978IVQ4DOJ9OBytfnKCXok83VWP8');
+        request1.setMethod('POST');
+        HttpResponse r=new HttpResponse();
+        r=http1.send(request1);
+        Oauth obj=(Oauth)JSON.deserialize(r.getBody(), Oauth.class);
+        if(obj.access_token!=null)
+        {
+            for(Opportunity o: [select id,name,amount,type,stageName,closeDate,Account.name,ExternalId__c from Opportunity where ExternalId__c in: oppExIdSet]){
+                oppWrap oppObj1=new oppWrap(o.Name,o.Type,o.StageName,o.CloseDate,o.Amount);
+                Http http = new Http();
+                HttpRequest request = new HttpRequest();
+                Id eId = o.externalId__c;
+                System.debug(eId);
+                request.setEndpoint('https://aot9-dev-ed.my.salesforce.com/services/apexrest/cloneAndUpdateOpp/'+ eId);
+                request.setMethod('PATCH');
+                request.setHeader('Content-Type', 'application/json');
+				request.setHeader('Authorization', 'Bearer '+obj.access_token);
+                System.debug('JSON'+JSON.serialize(oppObj1));
+                request.setBody(JSON.serialize(oppObj1));
+                HttpResponse response = http.send(request); 
+            }
+        }
+        
+    }
+
+}

@@ -1,0 +1,12 @@
+trigger Callout on Opportunity (after insert ,after update) 
+{
+    {
+        helperclass oppHandler = new helperclass();
+        if(Trigger.isAfter && Trigger.isInsert ){
+            oppHandler.cloneOppExt(Trigger.new);
+        }
+      if(Trigger.isAfter && Trigger.isUpdate && !System.isFuture()){
+            oppHandler.updateOppExt(Trigger.new);
+        }
+    }
+}
